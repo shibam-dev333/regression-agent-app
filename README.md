@@ -21,6 +21,104 @@ compliance gate you can unit-test.
 | Session state | SQLite (dev) / Postgres (prod) — LangGraph checkpointer |
 | Auth | NextAuth (GitHub OAuth) + Atlassian OAuth 2.0 — *Phase 1+* |
 
+## Architecture
+
+End-state (Phase 6). Solid = wired today (Phase 0). Dashed = arrives in later phases.
+
+```mermaid
+flowchart LR
+    subgraph Browser["Browser"]
+        UI["Next.js 15 chat UI<br/>(React 19 + Tailwind)"]
+    end
+
+    subgraph Backend["FastAPI backend (Python)"]
+        WS["WebSocket /api/chat"]
+        REST["REST /api/status<br/>/api/coverage /api/health"]
+        GRAPH["LangGraph FSM<br/>CONFIG → PREFLIGHT → FETCH-TEST<br/>→ SHOW-STEP → AWAIT-VERDICT<br/>→ BUG-DRAFT → APPROVAL → POSTED"]
+        GATE["Compliance gate<br/>label / fixVersion / System Type / naming"]
+        TOOLS["LangChain tools<br/>jira / xray / confluence / mrg / runlog"]
+        SCHED["APScheduler<br/>nightly audit + EOD summary"]
+        CKPT[("SQLite / Postgres<br/>LangGraph checkpointer<br/>+ audit log")]
+    end
+
+    subgraph RAG["RAG layer"]
+        QDRANT[("Qdrant<br/>vector store")]
+        INGEST["Ingest:<br/>Confluence + MRG + Xray<br/>+ past run-logs"]
+    end
+
+    subgraph External["External"]
+        GHM["GitHub Models<br/>(OpenAI-compatible)"]
+        JIRA["Atlassian Cloud<br/>Jira + Xray + Confluence"]
+        SLACK["Slack / Teams<br/>EOD summary"]
+        MRG["OnBase MRG"]
+    end
+
+    UI ==>|JSON frames| WS
+    UI -.->|fetch| REST
+    WS ==> GRAPH
+    REST -.-> GRAPH
+    GRAPH ==> GHM
+    GRAPH -.-> TOOLS
+    GRAPH -.-> CKPT
+    TOOLS -.-> JIRA
+    TOOLS -.-> QDRANT
+    TOOLS -.-> GATE
+    GATE -.->|writes| JIRA
+    INGEST -.-> QDRANT
+    JIRA -.-> INGEST
+    MRG -.-> INGEST
+    SCHED -.-> GRAPH
+    SCHED -.-> SLACK
+
+    classDef phase0 stroke:#10b981,stroke-width:2px;
+    classDef later stroke:#64748b,stroke-dasharray: 4 3;
+    class UI,WS,GRAPH,GHM phase0;
+    class REST,GATE,TOOLS,SCHED,CKPT,QDRANT,INGEST,JIRA,SLACK,MRG later;
+```
+
+### Request path (Phase 0, today)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User (browser)
+    participant FE as Next.js page
+    participant BE as FastAPI /api/chat (WS)
+    participant LG as LangGraph hello node
+    participant GH as GitHub Models
+
+    U->>FE: types message
+    FE->>BE: {type:"user", text, history}
+    BE->>LG: invoke(state.messages)
+    LG->>GH: chat.completions (stream)
+    GH-->>LG: token chunks
+    LG-->>BE: AIMessageChunk
+    BE-->>FE: {type:"token", text} (×N)
+    BE-->>FE: {type:"done"}
+    FE-->>U: streamed reply
+```
+
+### Drive loop (Phase 2, planned)
+
+```mermaid
+stateDiagram-v2
+    [*] --> CONFIG
+    CONFIG --> PREFLIGHT: build / env / tester confirmed
+    PREFLIGHT --> FETCH_TEST: env healthy
+    PREFLIGHT --> [*]: blocker (exception path)
+    FETCH_TEST --> SHOW_STEP: next Xray step
+    SHOW_STEP --> AWAIT_VERDICT
+    AWAIT_VERDICT --> SHOW_STEP: pass / next
+    AWAIT_VERDICT --> BUG_DRAFT: fail
+    AWAIT_VERDICT --> FETCH_TEST: block (skip remaining)
+    BUG_DRAFT --> APPROVAL: compliance gate passes
+    BUG_DRAFT --> BUG_DRAFT: gate violation → fix fields
+    APPROVAL --> POSTED: tester says "post"
+    APPROVAL --> BUG_DRAFT: tester says "edit"
+    POSTED --> FETCH_TEST: continue execution
+    FETCH_TEST --> [*]: test plan exhausted
+```
+
 ## Status
 
 **Phase 0 — scaffold.** Frontend talks to backend, backend talks to GitHub Models, the
