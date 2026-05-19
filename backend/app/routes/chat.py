@@ -4,6 +4,7 @@ Client -> server:
     { "type": "user", "text": "...", "history": [ {"role":"user|assistant","text":"..."} ] }
 
 Server -> client (multiple frames per turn):
+    { "type": "sources", "items": [ {n, source, path, title, score}, ... ] }
     { "type": "token", "text": "..." }   # streamed token
     { "type": "done" }                   # end of assistant turn
     { "type": "error", "text": "..." }   # fatal turn error
@@ -64,8 +65,8 @@ async def chat_ws(ws: WebSocket) -> None:
             history = _decode_history(payload.get("history"))
 
             try:
-                async for token in stream_reply(user_text, history):
-                    await ws.send_text(json.dumps({"type": "token", "text": token}))
+                async for event in stream_reply(user_text, history):
+                    await ws.send_text(json.dumps(event))
                 await ws.send_text(json.dumps({"type": "done"}))
             except Exception as exc:  # noqa: BLE001  — surface any runtime error to the client
                 log.exception("chat turn failed")

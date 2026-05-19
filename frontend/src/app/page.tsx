@@ -3,10 +3,51 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Role = "user" | "assistant";
-type Msg = { id: string; role: Role; text: string };
+type Source = {
+  n: number;
+  source: string;
+  path: string;
+  title: string;
+  score: number;
+};
+type Msg = { id: string; role: Role; text: string; sources?: Source[] };
 
 const WS_URL =
   process.env.NEXT_PUBLIC_BACKEND_WS ?? "ws://localhost:8000";
+
+function SourceChips({ sources }: { sources: Source[] }) {
+  if (!sources?.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {sources.map((s) => {
+        const isUrl = /^https?:\/\//i.test(s.path);
+        const label = `[${s.n}] ${s.title}`;
+        const className =
+          "rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] text-muted hover:border-accent/40 hover:text-foreground transition-colors";
+        return isUrl ? (
+          <a
+            key={s.n}
+            href={s.path}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={className}
+            title={`${s.source} · score ${s.score}\n${s.path}`}
+          >
+            {label}
+          </a>
+        ) : (
+          <span
+            key={s.n}
+            className={className}
+            title={`${s.source} · score ${s.score}\n${s.path}`}
+          >
+            {label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -27,12 +68,19 @@ export default function ChatPage() {
 
     ws.onmessage = (ev) => {
       const frame = JSON.parse(ev.data) as
+        | { type: "sources"; items: Source[] }
         | { type: "token"; text: string }
         | { type: "done" }
         | { type: "error"; text: string };
 
-      if (frame.type === "token") {
-        const id = assistantIdRef.current;
+      const id = assistantIdRef.current;
+
+      if (frame.type === "sources") {
+        if (!id) return;
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, sources: frame.items } : m)),
+        );
+      } else if (frame.type === "token") {
         if (!id) return;
         setMessages((prev) =>
           prev.map((m) => (m.id === id ? { ...m, text: m.text + frame.text } : m)),
@@ -41,7 +89,6 @@ export default function ChatPage() {
         assistantIdRef.current = null;
         setStreaming(false);
       } else if (frame.type === "error") {
-        const id = assistantIdRef.current;
         if (id) {
           setMessages((prev) =>
             prev.map((m) =>
@@ -85,7 +132,7 @@ export default function ChatPage() {
         <div>
           <h1 className="text-lg font-semibold">SBPPA Regression Agent</h1>
           <p className="text-xs text-muted">
-            Phase 0 — scaffold. Drive loop arrives in Phase 2.
+            Phase 1 — RAG grounded. Drive loop arrives in Phase 3.
           </p>
         </div>
         <span
@@ -103,8 +150,9 @@ export default function ChatPage() {
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {messages.length === 0 && (
           <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-muted">
-            Ask me anything about OnBase 26.1 regression. The full Drive loop, RAG
-            grounding, and Jira writes go live in later phases.
+            Ask me anything about OnBase 26.1 regression. Answers are grounded
+            in the indexed corpus (Confluence + MRG + local docs) and cite
+            their sources as [doc N] chips below each reply.
           </div>
         )}
         {messages.map((m) => (
@@ -121,6 +169,9 @@ export default function ChatPage() {
               {m.role}
             </div>
             {m.text || (m.role === "assistant" ? "…" : "")}
+            {m.role === "assistant" && m.sources ? (
+              <SourceChips sources={m.sources} />
+            ) : null}
           </div>
         ))}
         <div ref={bottomRef} />
