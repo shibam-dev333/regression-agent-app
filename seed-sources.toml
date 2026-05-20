@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# RAG seed configuration.
+#
+# Listed sources are ingested by:
+#     uv run python -m app.rag.ingest_cli seed
+#
+# Re-running is idempotent: chunks have stable IDs derived from (path, index),
+# so re-ingesting updates points in place — it does not create duplicates.
+#
+# Each [[source]] entry supports:
+#   path     (required)  Folder to walk recursively (.md/.txt/.mdx/.rst/.html/.htm).
+#                        Relative paths are resolved against the repo root.
+#                        Absolute paths are used as-is.
+#   label    (required)  source tag stored on every chunk; shown in citation chips.
+#   enabled  (optional)  Defaults to true. Set false to keep an entry as a template
+#                        without ingesting it.
+#
+# Missing folders are skipped with a warning (not an error), so the same
+# config can be checked in and shared across machines.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Default: in-repo corpus. Anything you drop here is automatically indexed
+# on the next `seed` run. New contributors get a working command out of the box.
+[[source]]
+path  = "data/seed-corpus"
+label = "app-docs"
+
+# ─── OnBase 26.1 sibling-repo sources (SBPPA team default) ───────────────────
+# These are enabled by default because they are the canonical regression corpus
+# for the SBPPA + OnBase Workflow team. On machines that don't have the sibling
+# repo cloned, the seed command will print `[skip] not found` and move on — no
+# crash, no manual editing required.
+#
+# To remap to a different location, change `path` (Windows paths use forward
+# slashes for portability with TOML).
+
+# Process rules, label/fixVersion policy, naming conventions, SBPPA agent spec,
+# plus the 50+ Workflow engineering reference docs under docs/onbase-workflow.
+[[source]]
+path  = "C:/26.1_Onbase/.github/agents"
+label = "agent-spec"
+
+# SBPPA regression test guides (HTML), run-log / defect / coverage templates.
+[[source]]
+path  = "C:/26.1_Onbase/docs"
+label = "regression-docs"
+
+# Sibling regression-agent templates folder (per-team conventions, if present).
+[[source]]
+path    = "C:/26.1_Onbase/regression-agent/templates"
+label   = "team-templates"
+enabled = false
