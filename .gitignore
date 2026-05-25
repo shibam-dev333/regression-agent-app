@@ -42,7 +42,17 @@ postgres_data/
 *.sqlite
 *.sqlite3
 *.db
-
+# ─── scraper auth + cache ───────────────────────────────────────────────
+data/storage_state.json
+data/auth/
+data/xray-cache/
 # ─── logs ─────────────────────────────────────────────────────────────────────
 *.log
 logs/
+
+data/web_storage_state.json
+data/web-debug/
+data/xray-debug/
+data/xray-cache/
+__pycache__/
+*.pyc

@@ -1,0 +1,36 @@
+# Where the agent finds each OnBase client on this machine.
+#
+# Edit per-VM. Paths are absolute Windows paths.
+# Anything left as an empty string disables that executor (router will say "manual").
+
+[web]
+# OnBase Web Client root URL — the AppNet build.
+url = "https://rdv-009923.hylandqa.net/AppNet_26.1.0.475/Login.aspx"
+# Login mode: "form" (HSI/native) or "windows" (Integrated Auth, NTLM popup).
+login_mode = "form"
+# Default browser for Playwright. "chromium" | "chrome" | "msedge".
+browser = "chromium"
+# Run with a visible window so the user can watch + take over.
+headless = false
+
+[unity]
+# Path to OnBase Unity Client. Adjust per install.
+exe = "C:/Program Files (x86)/Hyland/Unity Client/UnityClient.exe"
+# Optional: server URL passed via /serverlocation argument.
+server_location = "http://rdv-009923.hylandqa.net/AppServer64_26.1.0.475/Service.asmx"
+# Window title regex used to grab the HWND after launch.
+window_title_regex = "OnBase Unity Client.*"
+# Process startup grace period (seconds) — Unity takes a moment to draw its first frame.
+startup_seconds = 8
+
+[studio]
+# Path to OnBase Studio.
+exe = "C:/Program Files (x86)/Hyland/OnBase Studio/OnBase.Studio.exe"
+window_title_regex = "OnBase Studio.*"
+startup_seconds = 6
+
+[stream]
+# Live-view frame rate sent over the websocket to the chat UI.
+fps = 2
+# JPEG quality 1-100. Lower = smaller frames = smoother stream on remote dev box.
+jpeg_quality = 60

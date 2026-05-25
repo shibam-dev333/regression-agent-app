@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     rag_top_k: int = 5
     rag_min_score: float = 0.30  # below this we drop the chunk (cosine similarity)
-
+    # ── Atlassian (Jira + Confluence share one token) ──────────────────────────
+    jira_base_url: str = "https://hyland.atlassian.net"
+    atlassian_email: str = ""
+    atlassian_api_token: str = ""  # https://id.atlassian.com/manage-profile/security/api-tokens
     # ── Confluence (stub for now) ────────────────────────────────────────────
     confluence_base_url: str = ""
     confluence_email: str = ""
@@ -34,6 +37,14 @@ class Settings(BaseSettings):
 
     # ── MRG (stub for now) ───────────────────────────────────────────────────
     mrg_data_dir: str = ""
+
+    # ── OnBase client credentials (used for auto-login on Login.aspx) ────────
+    onbase_web_user: str = ""
+    onbase_web_pass: str = ""
+
+    # ── Vision action loop ──────────────────────────────────────────────────
+    action_loop_max_steps: int = 8  # per Xray step
+    action_loop_model: str = "openai/gpt-4o"  # needs vision; override in .env
 
     @property
     def cors_origins_list(self) -> list[str]:
